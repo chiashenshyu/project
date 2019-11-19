@@ -163,13 +163,13 @@ int main(){
     std::vector<Node> wayPoints;
     std::vector<double> _x, _y; 
     p.ExtractPath(path, wayPoints);
-    std::reverse(path.cx.begin(), path.cy.end()); 
+    std::reverse(path.cx.begin(), path.cx.end()); 
     std::reverse(path.cy.begin(), path.cy.end()); 
     smooth(path.cx, path.cy, _x, _y); 
     path.cx = _x; 
     path.cy = _y;
     std::vector<double> cd(path.cx.size(), 0); 
-    for(int i = 1; path.cy.size(); i++){
+    for(int i = 1; i < path.cy.size(); i++){
         cd[i] = sqrt(0.01 + pow(path.cy[i]-path.cy[i-1], 2)); 
     }
 
@@ -190,10 +190,10 @@ int main(){
                                                  {-400, -400},
                                                  { 100, -300},
                                                  { 500,  350},
-                                                 { 425, -450},
+                                                //  { 425, -450},
                                                  {-155,  200},
                                                  {-550,   50},
-                                                 { 200,  530},
+                                                 { 200,  400},
                                                  { 550,    0},
                                                  { -50, -475}
                                                  };
@@ -207,11 +207,11 @@ int main(){
 
     // Obstacles
     std::vector<std::vector<double>> obstacles, obstaclesLocal; 
-    // obstacles => todo 
+    obstacles = landmark;
     obstaclesLocal = obstacles; 
 
     // Set initial condition
-    States veh(0., 3., 0., 2.);
+    States veh(A.origin.x, A.origin.y, M_PI, 2.);
     std::vector<States> vehStateVec; 
     std::vector<double> x, y, v, t; 
     vehStateVec.push_back(veh); 
@@ -222,6 +222,7 @@ int main(){
     Eigen::VectorXd x_14pts(fittingPoints); 
     Eigen::VectorXd y_14pts(fittingPoints); 
 
+    
     while(_time < maxTime){
         // Take 14 points from the path, starting from the closest point and transform 
         // them into local frame
@@ -243,6 +244,9 @@ int main(){
             std::cout << "Done!" << std::endl;
             break; 
         }
+        std::vector<double> xplot(1, x_14pts[0]), yplot; 
+        yplot = polyvec(coeff, xplot, 20);
+        transform_to_global(veh, xplot, yplot);
 
         // Set initial state for MPC controller
         double cte = coeff[0], we = -atan(coeff[1]); 
@@ -256,6 +260,7 @@ int main(){
         // Set lookahead distance for next step according to vehicle state now
         double xtmp = 0., ytmp = 0.;
         std::vector<double> xmpc, ympc; 
+        lookaheadDist = 0;
         for(int i = 2; i < res.size(); i+= 2){
             lookaheadDist += sqrt(pow(res[i]-xtmp,2) + pow(res[i+1]-ytmp,2)); 
             xtmp = res[i]; 
@@ -281,12 +286,22 @@ int main(){
             plt::named_plot("Car", x, y, "*k");
             plt::named_plot("Path", path.cx, path.cy, "-r");
             plt::named_plot("mpc_traj", xmpc, ympc, "go");
+            plt::named_plot("poly", xplot, yplot, "b+");
+            for(int i = 0; i < landmark.size(); i++){
+                plotCircle(landmark[i][0], landmark[i][1], 50.); 
+                if(!lmVisible[i]) continue;
+                // plotLine(landmark[i][0], landmark[i][1], car.st.x, car.st.y, "c-");
+            }
+            // plt::named_plot("poly points", x14pts, y14pts, "co");
             for(int i = 0; i < obstacles.size(); i++) plotCircle(obstacles[i][0], obstacles[i][1], 1.0);
+            viz.drawObstacle();
             // Legends on; Axis equal
             plt::legend(); 
             plt::axis("equal");
-            plt::pause(0.1);
+            plt::pause(0.01);
         #endif
+
+        cout << "time: " << _time << ", vel: " << veh.v << endl;
         }
         plt::show();     
     return 0;

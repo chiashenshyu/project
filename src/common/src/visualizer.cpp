@@ -7,7 +7,7 @@
 void Visualizer::drawObstacle(){
     for(int i = 0; i < obstacle.rows(); i++){
         double x1 = obstacle(i,0), y1 = obstacle(i,1), x2 = obstacle(i,2), y2 = obstacle(i,3); 
-        string lineType = "r-";
+        string lineType = "c-";
         plotLine(x1, y1, x2, y2, lineType);
     }
 }

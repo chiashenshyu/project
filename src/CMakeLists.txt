@@ -28,6 +28,6 @@ add_executable(${PROJECT_NAME} ${MY_SOURCE_FILES})
 find_package(PythonLibs 2.7)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${PYTHON_LIBRARIES})
-target_link_libraries(project ipopt z ssl uv uWS)
-
+#target_link_libraries(project ipopt z ssl uv uWS)
+target_link_libraries(project ipopt)
 ###############################################################

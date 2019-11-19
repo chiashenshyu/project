@@ -12,7 +12,7 @@ size_t we_start = cte_start+N;
 size_t obs_start = we_start+N;
 size_t delta_start = we_start+N;
 size_t a_start = delta_start+N-1;
-double target_speed = 5.0; //m/s
+double target_speed = 30.0; //m/s
 const double Lf = 2.67;
 double dt = 0.1;
 double _dx = 0.1; 
@@ -195,8 +195,8 @@ vector<double> MPC::mpc_solve(Eigen::VectorXd state,Eigen::VectorXd coeff,
         constraints_lb[i] = 0.;
     }
     for(int i = N*(6); i < n_constraints; i++){
-        constraints_up[i] = 1000.; 
-        constraints_lb[i] = 1.;   
+        constraints_up[i] = 10000.; 
+        constraints_lb[i] = 60.;   
     }
 
     constraints_lb[x_start] = state[0];
@@ -241,7 +241,7 @@ vector<double> MPC::mpc_solve(Eigen::VectorXd state,Eigen::VectorXd coeff,
     CppAD::ipopt::solve(options,var,var_lowerbounds,var_upperbounds,constraints_lb,constraints_up,fg_eval,result);
 
     // // Parsing the result
-    std::cout << "Solution Status :" << result.status << "\n";
+    // std::cout << "Solution Status :" << result.status << "\n";
     // std::cout << "cost :" << result.obj_value << "/n";
     // return control at the 1st timestamp
 
@@ -254,8 +254,8 @@ vector<double> MPC::mpc_solve(Eigen::VectorXd state,Eigen::VectorXd coeff,
         control.push_back(result.x[x_start+i]); 
         control.push_back(result.x[y_start+i]);
     }
-    std::cout<<"delta " << control[0] << std::endl;
-    std::cout<<"a " << control[1] << std::endl;
+    // std::cout<<"delta " << control[0] << std::endl;
+    // std::cout<<"a " << control[1] << std::endl;
     auto cost = result.obj_value; 
     // cout << "cost: " << cost << endl;
     return control;
