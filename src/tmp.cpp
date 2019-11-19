@@ -5,6 +5,126 @@
 
 #define VIZ
 
+int calc_lookahead_pt(std::vector<double> cx,std::vector<double> cy,States veh){
+    double min_dis = std::numeric_limits<double>::max();
+    int indx = 0, i = 0;
+    for(;i<cx.size();i++){
+        double dx = veh.x - cx[i];
+        double dy = veh.y - cy[i];
+        double tempdist = sqrt(pow(dx,2)+pow(dy,2));
+        if(min_dis>tempdist){
+            min_dis = tempdist;
+            indx = i;
+        }
+    }
+    // double angle = pi2pi(cd[indx] - atan2(cy[indx] - veh.y, cx[indx] - veh.x));
+    // // if(angle < 0) indx = -indx;
+    // isRight = (angle < 0)? true : false; 
+    return indx;
+}
+
+void get_14points(int indx,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_14pts,
+                  std::vector<double>cx,std::vector<double>cy,std::vector<double>cd,
+                  double lookaheadDist){
+    // for(int i=0;i<fit_numberof_pts;i++){
+    //     x_14pts[i] = cx[i+indx];
+    //     y_14pts[i] = cy[i+indx];
+    // }
+    int i = 0;
+    double totalDist = 0.0;  
+    std::vector<double> x, y; 
+    while((totalDist < lookaheadDist || i < 14) && i+indx < cx.size()){
+        totalDist += (i != 0)? cd[i+indx] : 0;
+        i++;
+    }
+    x_14pts.resize(i);
+    y_14pts.resize(i); 
+    for(int j = 0; j < i; j++){
+        x_14pts[j] = cx[j+indx];
+        y_14pts[j] = cy[j+indx];
+    }
+    // cout << "points selected: " << i << endl;
+}
+
+void transform_to_local(States veh_,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_14pts){
+    Eigen::VectorXd pnt(2);
+    Eigen::VectorXd local_pnt(2);
+
+    Eigen::MatrixXd translation(2,2);
+    translation <<  cos(-veh_.theta), -sin(-veh_.theta),
+                    sin(-veh_.theta),  cos(-veh_.theta);
+    for(int i =0; i<x_14pts.size();i++){
+        pnt << x_14pts[i] - veh_.x, y_14pts[i] - veh_.y;
+        local_pnt = translation * pnt;
+        x_14pts[i] = local_pnt[0];
+        y_14pts[i] = local_pnt[1];
+    }
+}
+
+void transform_to_global(States veh, vector<double>& x, vector<double>& y){
+    assert(x.size() == y.size()); 
+    int n = x.size();
+    double theta = veh.theta, xtmp, ytmp; 
+    for(int i = 0; i < n; i++){
+        xtmp = x[i]; 
+        ytmp = y[i];
+        x[i] = veh.x + xtmp*cos(theta) - ytmp*sin(theta); 
+        y[i] = veh.y + xtmp*sin(theta) + ytmp*cos(theta); 
+    }
+}
+
+void transform_to_local(States veh, std::vector<std::vector<double>>& obstacles,
+                        std::vector<std::vector<double>>& obstacles_local){
+    for(int i = 0; i < obstacles.size(); i++){
+        double xtmp = obstacles[i][0] - veh.x, ytmp = obstacles[i][1] - veh.y; 
+        obstacles_local[i][0] = cos(-veh.theta) * xtmp - sin(-veh.theta) * ytmp; 
+        obstacles_local[i][1] = sin(-veh.theta) * xtmp + cos(-veh.theta) * ytmp;
+    }
+}
+
+double polyeval(Eigen::VectorXd coeffs, double x) {
+    double result = 0.0;
+    for (int i = 0; i < coeffs.size(); i++) {
+        result += coeffs[i] * pow(x, i);
+    }
+    return result;
+}
+
+vector<double> polyvec (Eigen::VectorXd coeffs, vector<double>& x,int points){
+    vector<double> y;
+    double x_ = x[0];
+    y.push_back(polyeval(coeffs,x_));
+    for(int i = 1;i<points;i++){
+        y.push_back(polyeval(coeffs,x_));
+        x.push_back(x_);
+        x_ += 0.1;
+    }
+    return y;
+}
+
+void polyfit(Eigen::VectorXd& coeff, Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
+    assert(xvals.size() == yvals.size());
+    int err = -1; 
+    if(!(order >= 1 && order <= xvals.size() - 1)){
+        throw err; 
+    }
+    Eigen::MatrixXd A(xvals.size(), order + 1);
+
+    for (int i = 0; i < xvals.size(); i++) {
+        A(i, 0) = 1.0;
+    }
+
+    for (int j = 0; j < xvals.size(); j++) {
+        for (int i = 0; i < order; i++) {
+            A(j, i + 1) = A(j, i) * xvals(j);
+        }
+    }
+
+    auto Q = A.householderQr();
+    coeff = Q.solve(yvals);
+    return;
+}
+
 int main(){
     /**
      * RRT star planner
@@ -32,7 +152,7 @@ int main(){
     A.goalProx   = 15;
 
     // RRT planner
-    Planner p(a); 
+    Planner p(A); 
     if(p.RRTstar()){
         std::cout << "Failed to find path to goal point" << std::endl;
         return 1; 
@@ -40,7 +160,8 @@ int main(){
 
     // Ectract path from planner for controller 
     Path path; 
-    std::vector<Node> wayPonts, _x, _y; 
+    std::vector<Node> wayPoints;
+    std::vector<double> _x, _y; 
     p.ExtractPath(path, wayPoints);
     std::reverse(path.cx.begin(), path.cy.end()); 
     std::reverse(path.cy.begin(), path.cy.end()); 
@@ -48,8 +169,8 @@ int main(){
     path.cx = _x; 
     path.cy = _y;
     std::vector<double> cd(path.cx.size(), 0); 
-    for(int i = 1; cy.size(); i++){
-        cd[i] = sqrt(0.01 + pow(cy[i]-cy[i-1], 2)); 
+    for(int i = 1; path.cy.size(); i++){
+        cd[i] = sqrt(0.01 + pow(path.cy[i]-path.cy[i-1], 2)); 
     }
 
     /**
@@ -57,7 +178,7 @@ int main(){
      */
     #ifdef VIZ 
     Visualizer viz; 
-    viz.plannerParamsIn(A): 
+    viz.plannerParamsIn(A);
     #endif
 
     /**
@@ -110,7 +231,7 @@ int main(){
         std::vector<double> x14pts(x_14pts.size(), 0.), y14pts(y_14pts.size(), 0.); 
         for(int i = 0; i < x_14pts.size(); i++){
             x14pts[i] = x_14pts[i]; 
-            y14pts[i] = y_14ptd[i]; // check this part, seems to be unnecessary
+            y14pts[i] = y_14pts[i]; // check this part, seems to be unnecessary
         }
         transform_to_local(veh, x_14pts, y_14pts); 
         
@@ -129,8 +250,8 @@ int main(){
         vehState << 0., 0., 0., veh.v, cte, we; 
 
         // Run MPC controller
-        auto res = controller.mpc_solve(vehState, coeff, obstaclesLocal); 
-        veh.update(res[1], res[0], dt);
+        auto res = mpcController.mpc_solve(vehState, coeff, obstaclesLocal); 
+        veh.update(res[1], res[0], 0.1);
 
         // Set lookahead distance for next step according to vehicle state now
         double xtmp = 0., ytmp = 0.;
@@ -144,7 +265,7 @@ int main(){
         }
         transform_to_global(veh, xmpc, ympc); 
 
-        time += dt; 
+        _time += 0.1; 
         vehStateVec.push_back(veh);
         lastTargetIndex = closetIndex; // Fix this in the future
         
@@ -165,10 +286,8 @@ int main(){
             plt::legend(); 
             plt::axis("equal");
             plt::pause(0.1);
-        }
-        plt::show(); 
         #endif
-    }
-    
+        }
+        plt::show();     
     return 0;
 }

@@ -2,11 +2,7 @@
 
 using CppAD::AD;
 
-
 int N = 20;
-double _dx = 0.1; 
-double target_speed = 5.0; //m/s
-const double Lf = 2.67;
 size_t x_start = 0;
 size_t y_start = x_start+N;
 size_t w_start = y_start+N;
@@ -16,33 +12,12 @@ size_t we_start = cte_start+N;
 size_t obs_start = we_start+N;
 size_t delta_start = we_start+N;
 size_t a_start = delta_start+N-1;
+double target_speed = 5.0; //m/s
+const double Lf = 2.67;
 double dt = 0.1;
+double _dx = 0.1; 
 
-void transform_to_local(state veh, std::vector<std::vector<double>>& obstacles,
-                        std::vector<std::vector<double>>& obstacles_local);
 
-void polyfit(Eigen::VectorXd& coeff, Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
-    assert(xvals.size() == yvals.size());
-    int err = -1; 
-    if(!(order >= 1 && order <= xvals.size() - 1)){
-        throw err; 
-    }
-    Eigen::MatrixXd A(xvals.size(), order + 1);
-
-    for (int i = 0; i < xvals.size(); i++) {
-        A(i, 0) = 1.0;
-    }
-
-    for (int j = 0; j < xvals.size(); j++) {
-        for (int i = 0; i < order; i++) {
-            A(j, i + 1) = A(j, i) * xvals(j);
-        }
-    }
-
-    auto Q = A.householderQr();
-    coeff = Q.solve(yvals);
-    return;
-}
 
 class FG_eval{
     public:
@@ -288,102 +263,6 @@ vector<double> MPC::mpc_solve(Eigen::VectorXd state,Eigen::VectorXd coeff,
 }
 
 
-int calc_lookahead_pt(std::vector<double> cx,std::vector<double> cy,state veh){
-    double min_dis = std::numeric_limits<double>::max();
-    int indx = 0, i = 0;
-    for(;i<cx.size();i++){
-        double dx = veh.x - cx[i];
-        double dy = veh.y - cy[i];
-        double tempdist = sqrt(pow(dx,2)+pow(dy,2));
-        if(min_dis>tempdist){
-            min_dis = tempdist;
-            indx = i;
-        }
-    }
-    // double angle = pi2pi(cd[indx] - atan2(cy[indx] - veh.y, cx[indx] - veh.x));
-    // // if(angle < 0) indx = -indx;
-    // isRight = (angle < 0)? true : false; 
-    return indx;
-}
-
-void get_14points(int indx,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_14pts,
-                  std::vector<double>cx,std::vector<double>cy,std::vector<double>cd,
-                  double lookaheadDist){
-    // for(int i=0;i<fit_numberof_pts;i++){
-    //     x_14pts[i] = cx[i+indx];
-    //     y_14pts[i] = cy[i+indx];
-    // }
-    int i = 0;
-    double totalDist = 0.0;  
-    std::vector<double> x, y; 
-    while((totalDist < lookaheadDist || i < 14) && i+indx < cx.size()){
-        totalDist += (i != 0)? cd[i+indx] : 0;
-        i++;
-    }
-    x_14pts.resize(i);
-    y_14pts.resize(i); 
-    for(int j = 0; j < i; j++){
-        x_14pts[j] = cx[j+indx];
-        y_14pts[j] = cy[j+indx];
-    }
-    // cout << "points selected: " << i << endl;
-}
-
-void transform_to_local(state veh_,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_14pts){
-    Eigen::VectorXd pnt(2);
-    Eigen::VectorXd local_pnt(2);
-
-    Eigen::MatrixXd translation(2,2);
-    translation <<  cos(-veh_.theta), -sin(-veh_.theta),
-                    sin(-veh_.theta),  cos(-veh_.theta);
-    for(int i =0; i<x_14pts.size();i++){
-        pnt << x_14pts[i] - veh_.x, y_14pts[i] - veh_.y;
-        local_pnt = translation * pnt;
-        x_14pts[i] = local_pnt[0];
-        y_14pts[i] = local_pnt[1];
-    }
-}
-
-void transform_to_global(state veh, vector<double>& x, vector<double>& y){
-    assert(x.size() == y.size()); 
-    int n = x.size();
-    double theta = veh.theta, xtmp, ytmp; 
-    for(int i = 0; i < n; i++){
-        xtmp = x[i]; 
-        ytmp = y[i];
-        x[i] = veh.x + xtmp*cos(theta) - ytmp*sin(theta); 
-        y[i] = veh.y + xtmp*sin(theta) + ytmp*cos(theta); 
-    }
-}
-
-void transform_to_local(state veh, std::vector<std::vector<double>>& obstacles,
-                        std::vector<std::vector<double>>& obstacles_local){
-    for(int i = 0; i < obstacles.size(); i++){
-        double xtmp = obstacles[i][0] - veh.x, ytmp = obstacles[i][1] - veh.y; 
-        obstacles_local[i][0] = cos(-veh.theta) * xtmp - sin(-veh.theta) * ytmp; 
-        obstacles_local[i][1] = sin(-veh.theta) * xtmp + cos(-veh.theta) * ytmp;
-    }
-}
-
-double polyeval(Eigen::VectorXd coeffs, double x) {
-    double result = 0.0;
-    for (int i = 0; i < coeffs.size(); i++) {
-        result += coeffs[i] * pow(x, i);
-    }
-    return result;
-}
-
-vector<double> polyvec (Eigen::VectorXd coeffs, vector<double>& x,int points){
-    vector<double> y;
-    double x_ = x[0];
-    y.push_back(polyeval(coeffs,x_));
-    for(int i = 1;i<points;i++){
-        y.push_back(polyeval(coeffs,x_));
-        x.push_back(x_);
-        x_ += 0.1;
-    }
-    return y;
-}
 
 
 
