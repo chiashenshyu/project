@@ -6,15 +6,21 @@
 
 #IncludeRegexTransform: 
 
-../src/Controller/include/ppc.hpp
+../src/Controller/include/mpc_steering.hpp
+eigen3/Eigen/Core
+-
+eigen3/Eigen/QR
+-
+eigen3/Eigen/Householder
+-
+iostream
+-
+cppad/cppad.hpp
+-
+cppad/ipopt/solve.hpp
+-
 common.hpp
 ../src/Controller/include/common.hpp
-matplotlibcpp.h
-../src/Controller/include/matplotlibcpp.h
-cv.h
--
-highgui.h
--
 
 ../src/PFLocalization/include/ParticleFilter.hpp
 common.hpp
@@ -116,45 +122,45 @@ opencv2/opencv.hpp
 kdTreeNode.hpp
 ../src/common/include/kdTreeNode.hpp
 
-/home/adas/workspace/Anderson/project/src/Controller/src/ppc.cpp
-ppc.hpp
-/home/adas/workspace/Anderson/project/src/Controller/src/ppc.hpp
+/home/perception/workspace/Anderson/project/src/Controller/src/mpc_steering.cpp
+mpc_steering.hpp
+/home/perception/workspace/Anderson/project/src/Controller/src/mpc_steering.hpp
 
-/home/adas/workspace/Anderson/project/src/PFLocalization/src/ParticleFilter.cpp
+/home/perception/workspace/Anderson/project/src/PFLocalization/src/ParticleFilter.cpp
 ParticleFilter.hpp
-/home/adas/workspace/Anderson/project/src/PFLocalization/src/ParticleFilter.hpp
+/home/perception/workspace/Anderson/project/src/PFLocalization/src/ParticleFilter.hpp
 
-/home/adas/workspace/Anderson/project/src/PathPlanning/Global_Planner/src/planner.cpp
+/home/perception/workspace/Anderson/project/src/PathPlanning/Global_Planner/src/planner.cpp
 planner.hpp
-/home/adas/workspace/Anderson/project/src/PathPlanning/Global_Planner/src/planner.hpp
+/home/perception/workspace/Anderson/project/src/PathPlanning/Global_Planner/src/planner.hpp
 
-/home/adas/workspace/Anderson/project/src/common/src/dubins.cpp
+/home/perception/workspace/Anderson/project/src/common/src/dubins.cpp
 dubins.h
-/home/adas/workspace/Anderson/project/src/common/src/dubins.h
+/home/perception/workspace/Anderson/project/src/common/src/dubins.h
 common.hpp
-/home/adas/workspace/Anderson/project/src/common/src/common.hpp
+/home/perception/workspace/Anderson/project/src/common/src/common.hpp
 
-/home/adas/workspace/Anderson/project/src/common/src/dynamics.cpp
+/home/perception/workspace/Anderson/project/src/common/src/dynamics.cpp
 dynamics.hpp
-/home/adas/workspace/Anderson/project/src/common/src/dynamics.hpp
+/home/perception/workspace/Anderson/project/src/common/src/dynamics.hpp
 
-/home/adas/workspace/Anderson/project/src/common/src/kdTreeNode.cpp
+/home/perception/workspace/Anderson/project/src/common/src/kdTreeNode.cpp
 kdTreeNode.hpp
-/home/adas/workspace/Anderson/project/src/common/src/kdTreeNode.hpp
+/home/perception/workspace/Anderson/project/src/common/src/kdTreeNode.hpp
 
-/home/adas/workspace/Anderson/project/src/common/src/visualizer.cpp
+/home/perception/workspace/Anderson/project/src/common/src/visualizer.cpp
 visualizer.hpp
-/home/adas/workspace/Anderson/project/src/common/src/visualizer.hpp
+/home/perception/workspace/Anderson/project/src/common/src/visualizer.hpp
 
-/home/adas/workspace/Anderson/project/src/main.cpp
+/home/perception/workspace/Anderson/project/src/tmp.cpp
 common.hpp
-/home/adas/workspace/Anderson/project/src/common.hpp
+/home/perception/workspace/Anderson/project/src/common.hpp
 ParticleFilter.hpp
-/home/adas/workspace/Anderson/project/src/ParticleFilter.hpp
+/home/perception/workspace/Anderson/project/src/ParticleFilter.hpp
 planner.hpp
-/home/adas/workspace/Anderson/project/src/planner.hpp
-ppc.hpp
-/home/adas/workspace/Anderson/project/src/ppc.hpp
+/home/perception/workspace/Anderson/project/src/planner.hpp
+mpc_steering.hpp
+/home/perception/workspace/Anderson/project/src/mpc_steering.hpp
 
 /usr/include/python2.7/Python.h
 patchlevel.h

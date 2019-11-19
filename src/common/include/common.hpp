@@ -21,6 +21,10 @@ inline double mod2pi(double theta){
     return theta - 2*M_PI*floor(theta/2/M_PI); 
 }
 
+inline double pi2pi(double theta){
+    return fmod(theta + M_PI, 2 * M_PI) - M_PI; 
+}
+
 struct Path{
     vector<double> cx; 
     vector<double> cy; 
@@ -69,6 +73,7 @@ typedef struct Planner_params{
     int goalProx;
 }planner_params;
 
+/* state for pure pursuit control
 typedef struct states{
     double x; 
     double y;
@@ -130,6 +135,80 @@ typedef struct states{
         rearY = y - (L/2) * sin(theta); 
     }
 }States; // decide later on typdef bussiness 
+*/
+typedef struct state
+{
+    double x; 
+    double y;
+    double theta;
+    double v;
+    double theta_dot;
+    double rearX; 
+    double rearY;
+    double L = 2.67;
+
+    double steer_max = 45.0 / 180.0 * M_PI; 
+
+    state(){};
+    state(){x = 0;y = 0;theta = 0;v = 0;}
+    state(double x_,double y_, double w_,double v_){
+        x = x_; y = y_; theta = w_; v = v_;
+    }
+    bool operator==(const states& A) const{
+        return (x == A.x && y == A.y);
+    }
+    bool operator!=(const states& A) const{
+        return (x != A.x || y != A.y);
+    }
+    void operator=(const states& A){
+        x = A.x;
+        y = A.y;
+        theta = A.theta;
+        v = A.v;
+        theta_dot = A.theta_dot;
+        rearX = A.rearX; 
+        rearY = A.rearY;
+    }
+    void SetCoord(Point& A){ // camelcase all func names
+        x = A.x;
+        y = A.y;
+        theta = M_PI;
+        v = 0;
+        theta_dot = 0;
+    }
+    void NoiseState(const states& st, const double& nx, const double& ny){
+        x = st.x + nx; 
+        y = st.y + ny; 
+    }
+    void setNoise(const double noiseX, const double noiseY){
+        x += noiseX;
+        y += noiseY;
+    }
+    void RandomState(const double& Random){
+        theta =  2*M_PI*Random;
+        v = 0;
+        theta_dot = 0;
+    }
+    double Cost(const states& q2){
+        return (sqrt(pow((x-q2.x),2)+pow((y-q2.y),2)));
+    }
+    double distance (double xd , double yd){
+        double dx = x-xd;
+        double dy = y-yd;
+        return sqrt(pow(dx,2)+pow(dy,2));
+    }
+    void update(double a,double delta,double dt){
+
+        // delta = (delta >  steer_max)?  steer_max : delta; 
+        // delta = (delta < -steer_max)? -steer_max : delta;   
+
+        x =  x +  v * cos(theta) * dt;
+        y =  y +  v * sin(theta) * dt;
+        w =   w +  v / L * tan(delta) * dt;
+        w = mod2pi(theta);
+        v =  v + a * dt;
+    }
+}States;
 
 typedef struct node{
     States state;
@@ -289,4 +368,19 @@ inline void plotCar(double x, double y, double theta, string color = "r"){
     plotLine(v3x, v3y, v2x, v2y, color);
     plotLine(v3x, v3y, v4x, v4y, color);
     plotLine(v1x, v1y, v4x, v4y, color);
+}
+
+inline void smooth(std::vector<double>& x, std::vector<double>& y, std::vector<double>& newX, std::vector<double>& newY){
+    double weightData = 0.1, weightSmooth = 0.5, tolerance = 0.00001; 
+    newX = x; newY = y; 
+    double change = tolerance; 
+    while(change >= tolerance){
+        change = 0.0; 
+        for(int i = 1; i < x.size()-1; i++){
+            double aux = newX[i], auy = newY[i]; 
+            newX[i] += weightData * (x[i] - newX[i]) + weightSmooth * (newX[i-1] + newX[i+1] - 2.0 * newX[i]);
+            newY[i] += weightData * (y[i] - newY[i]) + weightSmooth * (newY[i-1] + newY[i+1] - 2.0 * newY[i]);
+            change  += abs(aux - newX[i]) + abs(auy - newY[i]); 
+        }
+    }
 }

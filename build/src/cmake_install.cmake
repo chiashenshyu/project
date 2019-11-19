@@ -1,4 +1,4 @@
-# Install script for directory: /home/adas/workspace/Anderson/project/src
+# Install script for directory: /home/perception/workspace/Anderson/project/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

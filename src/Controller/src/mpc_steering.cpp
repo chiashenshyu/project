@@ -21,6 +21,29 @@ double dt = 0.1;
 void transform_to_local(state veh, std::vector<std::vector<double>>& obstacles,
                         std::vector<std::vector<double>>& obstacles_local);
 
+void polyfit(Eigen::VectorXd& coeff, Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
+    assert(xvals.size() == yvals.size());
+    int err = -1; 
+    if(!(order >= 1 && order <= xvals.size() - 1)){
+        throw err; 
+    }
+    Eigen::MatrixXd A(xvals.size(), order + 1);
+
+    for (int i = 0; i < xvals.size(); i++) {
+        A(i, 0) = 1.0;
+    }
+
+    for (int j = 0; j < xvals.size(); j++) {
+        for (int i = 0; i < order; i++) {
+            A(j, i + 1) = A(j, i) * xvals(j);
+        }
+    }
+
+    auto Q = A.householderQr();
+    coeff = Q.solve(yvals);
+    return;
+}
+
 class FG_eval{
     public:
     Eigen::VectorXd coeff;
@@ -311,8 +334,8 @@ void transform_to_local(state veh_,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_1
     Eigen::VectorXd local_pnt(2);
 
     Eigen::MatrixXd translation(2,2);
-    translation <<  cos(-veh_.w), -sin(-veh_.w),
-                    sin(-veh_.w),  cos(-veh_.w);
+    translation <<  cos(-veh_.theta), -sin(-veh_.theta),
+                    sin(-veh_.theta),  cos(-veh_.theta);
     for(int i =0; i<x_14pts.size();i++){
         pnt << x_14pts[i] - veh_.x, y_14pts[i] - veh_.y;
         local_pnt = translation * pnt;
@@ -324,7 +347,7 @@ void transform_to_local(state veh_,Eigen::VectorXd &x_14pts,Eigen::VectorXd &y_1
 void transform_to_global(state veh, vector<double>& x, vector<double>& y){
     assert(x.size() == y.size()); 
     int n = x.size();
-    double theta = veh.w, xtmp, ytmp; 
+    double theta = veh.theta, xtmp, ytmp; 
     for(int i = 0; i < n; i++){
         xtmp = x[i]; 
         ytmp = y[i];
@@ -337,8 +360,8 @@ void transform_to_local(state veh, std::vector<std::vector<double>>& obstacles,
                         std::vector<std::vector<double>>& obstacles_local){
     for(int i = 0; i < obstacles.size(); i++){
         double xtmp = obstacles[i][0] - veh.x, ytmp = obstacles[i][1] - veh.y; 
-        obstacles_local[i][0] = cos(-veh.w) * xtmp - sin(-veh.w) * ytmp; 
-        obstacles_local[i][1] = sin(-veh.w) * xtmp + cos(-veh.w) * ytmp;
+        obstacles_local[i][0] = cos(-veh.theta) * xtmp - sin(-veh.theta) * ytmp; 
+        obstacles_local[i][1] = sin(-veh.theta) * xtmp + cos(-veh.theta) * ytmp;
     }
 }
 
@@ -364,136 +387,136 @@ vector<double> polyvec (Eigen::VectorXd coeffs, vector<double>& x,int points){
 
 
 
-int main (){
-    // generate trajectory
-    std::vector<double> cx((60.0)/_dx,0.0);
-    std::vector<double> cy(cx.size(), 0.);
-    std::vector<double> cd(cx.size(), 0.);
-    for(int i = 1; i < cx.size();i++){
-        cx[i] = cx[i-1]+0.1;
-        cy[i] = sin(cx[i]/5.0);//*cx[i]/2.0;//sin(ix / 5.0) * ix / 2.0 for ix in cx]
-        cd[i] = sqrt(0.01 + pow(cy[i]-cy[i-1], 2)); 
-    }
+// int main (){
+//     // generate trajectory
+//     std::vector<double> cx((60.0)/_dx,0.0);
+//     std::vector<double> cy(cx.size(), 0.);
+//     std::vector<double> cd(cx.size(), 0.);
+//     for(int i = 1; i < cx.size();i++){
+//         cx[i] = cx[i-1]+0.1;
+//         cy[i] = sin(cx[i]/5.0);//*cx[i]/2.0;//sin(ix / 5.0) * ix / 2.0 for ix in cx]
+//         cd[i] = sqrt(0.01 + pow(cy[i]-cy[i-1], 2)); 
+//     }
     
-    // obstacles
-    std::vector<std::vector<double>> obstacles, obstacles_local;
-    // std::vector<double> tmp  = {16.0, 0.0}, tmp2 = {};
-    // obstacles.push_back(tmp); 
-    obstacles = {{16.0, 0.0}, {40.0, 1.2}, {26.0, 0.0}};
-    obstacles_local = obstacles;
+//     // obstacles
+//     std::vector<std::vector<double>> obstacles, obstacles_local;
+//     // std::vector<double> tmp  = {16.0, 0.0}, tmp2 = {};
+//     // obstacles.push_back(tmp); 
+//     obstacles = {{16.0, 0.0}, {40.0, 1.2}, {26.0, 0.0}};
+//     obstacles_local = obstacles;
 
-    //initalize state
-    // double _x, _y; 
-    // std::cout << "enter x: " << endl;
-    // std::cin >> _x;
-    // std::cout << "enter y: " << endl;
-    // std::cin >> _y; 
-    state veh_ (0,3,0,2.0);
-    // set speed
-    std::vector<state> veh_state;
-    veh_state.push_back(veh_);
-    std::vector<double> x,y,w,v,t;
+//     //initalize state
+//     // double _x, _y; 
+//     // std::cout << "enter x: " << endl;
+//     // std::cin >> _x;
+//     // std::cout << "enter y: " << endl;
+//     // std::cin >> _y; 
+//     state veh_ (0,3,0,2.0);
+//     // set speed
+//     std::vector<state> veh_state;
+//     veh_state.push_back(veh_);
+//     std::vector<double> x,y,w,v,t;
 
-    int max_time = 100;
-    double time = 0, delta = 0, a =1;
-    double lookaheadDist = 0; 
-    //std::cout << "before while ";
+//     int max_time = 100;
+//     double time = 0, delta = 0, a =1;
+//     double lookaheadDist = 0; 
+//     //std::cout << "before while ";
 
-    MPC controller;
-    int fit_numberof_pts = 14;
-    Eigen::VectorXd x_14pts(fit_numberof_pts);
-    Eigen::VectorXd y_14pts(fit_numberof_pts);
-    int last_target_idx = 0;
-    while (time < max_time ){
-        transform_to_local(veh_, obstacles, obstacles_local);
-        int clst_indx = calc_lookahead_pt(cx, cy,veh_); // find the closest point
+//     MPC controller;
+//     int fit_numberof_pts = 14;
+//     Eigen::VectorXd x_14pts(fit_numberof_pts);
+//     Eigen::VectorXd y_14pts(fit_numberof_pts);
+//     int last_target_idx = 0;
+//     while (time < max_time ){
+//         transform_to_local(veh_, obstacles, obstacles_local);
+//         int clst_indx = calc_lookahead_pt(cx, cy,veh_); // find the closest point
 
-        get_14points(clst_indx, x_14pts, y_14pts, cx, cy, cd, lookaheadDist); //find the closest 14 points
-        std::vector<double> x14pts(x_14pts.size(),0),y14pts(x_14pts.size(),0);
-        for(int i=0;i<x_14pts.size();i++){
-            x14pts[i] = x_14pts[i];
-            y14pts[i] = y_14pts[i];;
+//         get_14points(clst_indx, x_14pts, y_14pts, cx, cy, cd, lookaheadDist); //find the closest 14 points
+//         std::vector<double> x14pts(x_14pts.size(),0),y14pts(x_14pts.size(),0);
+//         for(int i=0;i<x_14pts.size();i++){
+//             x14pts[i] = x_14pts[i];
+//             y14pts[i] = y_14pts[i];;
 
-        }
-        transform_to_local(veh_,x_14pts,y_14pts);
-        //std::cout<<"14 points";
-        Eigen::VectorXd coeff;
-        try{
-            polyfit(coeff, x_14pts,y_14pts,3);
-        }catch(int e){
-            cout << "DONE" << endl;
-            break;
-        }
-        vector<double> xplot(1,x_14pts[0]);
-        vector<double> yplot;
-        yplot = polyvec(coeff, xplot, 80);
-        transform_to_global(veh_, xplot, yplot);
+//         }
+//         transform_to_local(veh_,x_14pts,y_14pts);
+//         //std::cout<<"14 points";
+//         Eigen::VectorXd coeff;
+//         try{
+//             polyfit(coeff, x_14pts,y_14pts,3);
+//         }catch(int e){
+//             cout << "DONE" << endl;
+//             break;
+//         }
+//         vector<double> xplot(1,x_14pts[0]);
+//         vector<double> yplot;
+//         yplot = polyvec(coeff, xplot, 80);
+//         transform_to_global(veh_, xplot, yplot);
 
-        // std::cout<<"start coeff";
-        // for(int i=0;i<coeff.size();i++){
-        //     std::cout<<coeff[i]<<std::endl;
-        // }
-        // std::cout<<"start coeff";
+//         // std::cout<<"start coeff";
+//         // for(int i=0;i<coeff.size();i++){
+//         //     std::cout<<coeff[i]<<std::endl;
+//         // }
+//         // std::cout<<"start coeff";
 
-        double cte = coeff[0];
-        // std::cout<<"CTE"<<cte;
-        int rand;
-        // std::cin>> rand;
-        double we = -atan(coeff[1]);
-        // std::cout<<we;
-        Eigen::VectorXd vehstate(6);
-        vehstate << 0, 0, 0, veh_.v, cte, we;
+//         double cte = coeff[0];
+//         // std::cout<<"CTE"<<cte;
+//         int rand;
+//         // std::cin>> rand;
+//         double we = -atan(coeff[1]);
+//         // std::cout<<we;
+//         Eigen::VectorXd vehstate(6);
+//         vehstate << 0, 0, 0, veh_.v, cte, we;
         
-        auto res = controller.mpc_solve(vehstate,coeff, obstacles_local);
-        veh_.update(res[1],res[0],dt);
-        cout << "*********" << endl;
-        for(auto i : obstacles){            
-            cout << sqrt(pow(veh_.x-i[0],2) + pow(veh_.y-i[1],2)) << endl;
-        }
-        cout << "*********" << endl << endl;
-        vector<double> xmpc, ympc; 
-        // cout << "size " << res.size() << endl;
+//         auto res = controller.mpc_solve(vehstate,coeff, obstacles_local);
+//         veh_.update(res[1],res[0],dt);
+//         cout << "*********" << endl;
+//         for(auto i : obstacles){            
+//             cout << sqrt(pow(veh_.x-i[0],2) + pow(veh_.y-i[1],2)) << endl;
+//         }
+//         cout << "*********" << endl << endl;
+//         vector<double> xmpc, ympc; 
+//         // cout << "size " << res.size() << endl;
         
-        double xtmp = 0, ytmp = 0; 
-        lookaheadDist = 0; 
-        for(int i = 2; i < res.size(); i += 2){
-            lookaheadDist += sqrt(pow(res[i]-xtmp,2) + pow(res[i+1]-ytmp,2)); 
-            xtmp = res[i]; 
-            ytmp = res[i+1]; 
-            xmpc.push_back(xtmp); 
-            ympc.push_back(ytmp); 
-        }
-        transform_to_global(veh_, xmpc, ympc);
+//         double xtmp = 0, ytmp = 0; 
+//         lookaheadDist = 0; 
+//         for(int i = 2; i < res.size(); i += 2){
+//             lookaheadDist += sqrt(pow(res[i]-xtmp,2) + pow(res[i+1]-ytmp,2)); 
+//             xtmp = res[i]; 
+//             ytmp = res[i+1]; 
+//             xmpc.push_back(xtmp); 
+//             ympc.push_back(ytmp); 
+//         }
+//         transform_to_global(veh_, xmpc, ympc);
 
-        time = time + dt;
-        veh_state.push_back(veh_);
-        last_target_idx++;
-        if(last_target_idx == cx.size()-14)
-            break;
-        #if PLOT
-            x.push_back(veh_state.back().x);
-            y.push_back(veh_state.back().y);
-            // Clear previous plot
-			plt::clf();
-			// Plot line from given x and y data. Color is selected automatically.            
-			plt::named_plot("Car",x,y,"*k");
-            plt::named_plot("Track",cx,cy,"-r");   
-            plt::named_plot("poly_points",x14pts,y14pts,"-b");
-            /****/
-            plt::named_plot("mpc_traj", xmpc, ympc, "go");
-            // plt::named_plot("poly", xplot, yplot, "r+");
-            for(int i = 0; i < obstacles.size(); i++) plotCircle(obstacles[i][0], obstacles[i][1], 1.0);
-            /****/
-            plt::legend();
-            plt::axis("equal");
-            // plt::xlim(-1,60);
-            // plt::plot(cx,cdd,"-b");
-            plt::pause(0.1);
+//         time = time + dt;
+//         veh_state.push_back(veh_);
+//         last_target_idx++;
+//         if(last_target_idx == cx.size()-14)
+//             break;
+//         #if PLOT
+//             x.push_back(veh_state.back().x);
+//             y.push_back(veh_state.back().y);
+//             // Clear previous plot
+// 			plt::clf();
+// 			// Plot line from given x and y data. Color is selected automatically.            
+// 			plt::named_plot("Car",x,y,"*k");
+//             plt::named_plot("Track",cx,cy,"-r");   
+//             plt::named_plot("poly_points",x14pts,y14pts,"-b");
+//             /****/
+//             plt::named_plot("mpc_traj", xmpc, ympc, "go");
+//             // plt::named_plot("poly", xplot, yplot, "r+");
+//             for(int i = 0; i < obstacles.size(); i++) plotCircle(obstacles[i][0], obstacles[i][1], 1.0);
+//             /****/
+//             plt::legend();
+//             plt::axis("equal");
+//             // plt::xlim(-1,60);
+//             // plt::plot(cx,cdd,"-b");
+//             plt::pause(0.1);
 
-        #endif
-    }
-    plt::show(); 
-    return 0;
-}
+//         #endif
+//     }
+//     plt::show(); 
+//     return 0;
+// }
 
 //g++ mpc_steering.cpp -I/usr/include/python2.7 -lpython2.7 -lipopt -std=c++11
