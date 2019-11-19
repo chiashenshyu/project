@@ -136,7 +136,7 @@ typedef struct states{
     }
 }States; // decide later on typdef bussiness 
 */
-typedef struct state
+typedef struct states
 {
     double x; 
     double y;
@@ -149,9 +149,9 @@ typedef struct state
 
     double steer_max = 45.0 / 180.0 * M_PI; 
 
-    state(){};
-    state(){x = 0;y = 0;theta = 0;v = 0;}
-    state(double x_,double y_, double w_,double v_){
+    // state(){};
+    states(){x = 0;y = 0;theta = 0;v = 0;}
+    states(double x_,double y_, double w_,double v_){
         x = x_; y = y_; theta = w_; v = v_;
     }
     bool operator==(const states& A) const{
@@ -197,15 +197,15 @@ typedef struct state
         double dy = y-yd;
         return sqrt(pow(dx,2)+pow(dy,2));
     }
-    void update(double a,double delta,double dt){
+    void update(double a, double delta, double dt, double _a = 0){
 
         // delta = (delta >  steer_max)?  steer_max : delta; 
         // delta = (delta < -steer_max)? -steer_max : delta;   
 
         x =  x +  v * cos(theta) * dt;
         y =  y +  v * sin(theta) * dt;
-        w =   w +  v / L * tan(delta) * dt;
-        w = mod2pi(theta);
+        theta =   theta +  v / L * tan(delta) * dt;
+        theta = mod2pi(theta);
         v =  v + a * dt;
     }
 }States;
